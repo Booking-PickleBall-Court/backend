@@ -1,4 +1,4 @@
-package com.javawhizz.fileServer.service.impl;
+package com.pickleball.be.service;
 
 import org.springframework.web.multipart.MultipartFile;
 

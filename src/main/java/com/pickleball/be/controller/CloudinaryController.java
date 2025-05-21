@@ -1,7 +1,6 @@
-package com.javawhizz.fileServer.controller;
+package com.pickleball.be.controller;
 
-import com.cloudinary.Cloudinary;
-import com.javawhizz.fileServer.service.impl.CloudinaryImageService;
+import com.pickleball.be.service.CloudinaryImageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

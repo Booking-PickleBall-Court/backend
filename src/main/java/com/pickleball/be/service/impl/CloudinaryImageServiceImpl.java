@@ -1,6 +1,7 @@
-package com.javawhizz.fileServer.service.impl;
+package com.pickleball.be.service.impl;
 
 import com.cloudinary.Cloudinary;
+import com.pickleball.be.service.CloudinaryImageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,7 +10,7 @@ import java.io.IOException;
 import java.util.Map;
 
 @Service
-public class CloudinaryImageServiceImpl implements CloudinaryImageService{
+public class CloudinaryImageServiceImpl implements CloudinaryImageService {
     @Autowired
     private Cloudinary cloudinary;
 

@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/court-slots/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/payments/**").permitAll()
+                .requestMatchers("/cloudinary/upload").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
