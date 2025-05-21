@@ -3,8 +3,10 @@ package com.pickleball.be.service.impl;
 import com.pickleball.be.dto.court.CourtRequest;
 import com.pickleball.be.model.*;
 import com.pickleball.be.repository.CourtRepository;
+import com.pickleball.be.repository.CourtImageRepository;
 import com.pickleball.be.repository.UserRepository;
 import com.pickleball.be.service.CourtService;
+import com.pickleball.be.service.CloudinaryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,38 +17,102 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
-@Service
+@Service("courtServiceImpl")
 @RequiredArgsConstructor
 public class CourtServiceImpl implements CourtService {
 
     private final CourtRepository courtRepository;
     private final UserRepository userRepository;
+    private final CourtImageRepository courtImageRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Override
+    @Transactional
     public Court createCourt(CourtRequest request) {
         User currentOwner = getCurrentUser();
         Court court = new Court();
         mapToEntity(request, court);
         court.setOwner(currentOwner);
         court.setStatus(CourtStatus.AVAILABLE);
+        
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            try {
+                List<Map<String, String>> uploadResults = cloudinaryService.uploadImages(request.getImages());
+                for (Map<String, String> result : uploadResults) {
+                    CourtImage courtImage = new CourtImage();
+                    courtImage.setCourt(court);
+                    courtImage.setImageUrl(result.get("url"));
+                    courtImage.setCloudinaryPublicId(result.get("public_id"));
+                    court.getImages().add(courtImage);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to upload images", e);
+            }
+        }
+        
         return courtRepository.save(court);
     }
 
     @Override
+    @Transactional
     public Court updateCourt(Long id, CourtRequest request) {
         Court court = getCourtById(id);
         mapToEntity(request, court);
+        
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            // Delete existing images from Cloudinary
+            court.getImages().forEach(image -> {
+                try {
+                    cloudinaryService.deleteImage(image.getCloudinaryPublicId());
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to delete old image", e);
+                }
+            });
+            
+            // Clear existing images
+            court.getImages().clear();
+            
+            // Upload new images
+            try {
+                List<Map<String, String>> uploadResults = cloudinaryService.uploadImages(request.getImages());
+                for (Map<String, String> result : uploadResults) {
+                    CourtImage courtImage = new CourtImage();
+                    courtImage.setCourt(court);
+                    courtImage.setImageUrl(result.get("url"));
+                    courtImage.setCloudinaryPublicId(result.get("public_id"));
+                    court.getImages().add(courtImage);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to upload images", e);
+            }
+        }
+        
         return courtRepository.save(court);
     }
 
     @Override
+    @Transactional
     public void deleteCourt(Long id) {
-        courtRepository.deleteById(id);
+        Court court = getCourtById(id);
+        
+        // Delete images from Cloudinary
+        court.getImages().forEach(image -> {
+            try {
+                cloudinaryService.deleteImage(image.getCloudinaryPublicId());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to delete image", e);
+            }
+        });
+        
+        courtRepository.delete(court);
     }
 
     @Override
@@ -132,7 +198,13 @@ public class CourtServiceImpl implements CourtService {
         court.setAddress(request.getAddress());
         court.setDescription(request.getDescription());
         court.setCourtType(request.getCourtType());
-        court.setImageUrl("");
         court.setHourlyPrice(request.getHourlyPrice());
+    }
+
+    public boolean isCourtOwner(Long courtId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+        Court court = getCourtById(courtId);
+        return court.getOwner().getEmail().equals(currentUserEmail);
     }
 }

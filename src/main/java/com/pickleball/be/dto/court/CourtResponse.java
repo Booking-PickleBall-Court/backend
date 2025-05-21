@@ -7,6 +7,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,7 +17,7 @@ public class CourtResponse {
     private String address;
     private String description;
     private CourtType courtType;
-    private String imageUrl;
+    private List<String> imageUrls;
     private BigDecimal hourlyPrice;
     private CourtStatus status;
     private Long ownerId;

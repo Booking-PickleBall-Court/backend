@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Entity
@@ -33,8 +35,8 @@ public class Court {
     @Column(name = "court_type", nullable = false)
     private CourtType courtType;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    @OneToMany(mappedBy = "court", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CourtImage> images = new ArrayList<>();
 
     @Column(name = "hourly_price", nullable = false)
     private BigDecimal hourlyPrice;

@@ -1,11 +1,15 @@
 package com.pickleball.be.controller;
 
 import com.pickleball.be.dto.court.CourtRequest;
+import com.pickleball.be.dto.court.CourtResponse;
 import com.pickleball.be.model.Court;
+import com.pickleball.be.model.CourtImage;
 import com.pickleball.be.model.CourtStatus;
 import com.pickleball.be.model.CourtType;
+import com.pickleball.be.service.CloudinaryImageService;
 import com.pickleball.be.service.CourtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -17,55 +21,75 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/courts")
 @RequiredArgsConstructor
 public class CourtController {
 
+    @Autowired
+    private CloudinaryImageService cloudinaryImageService;
+
+    @Autowired
     private final CourtService courtService;
 
-    @PostMapping
+    @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('OWNER')")
-    public ResponseEntity<Court> createCourt(@RequestBody CourtRequest request) {
-        return ResponseEntity.ok(courtService.createCourt(request));
+    public ResponseEntity<CourtResponse> createCourt(@ModelAttribute CourtRequest request) {
+        Court court = courtService.createCourt(request);
+        return ResponseEntity.ok(mapToCourtResponse(court));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('OWNER') and @courtServiceImpl.isCourtOwner(#id)")
-    public ResponseEntity<Court> updateCourt(@PathVariable Long id, @RequestBody CourtRequest request) {
-        return ResponseEntity.ok(courtService.updateCourt(id, request));
+    public ResponseEntity<CourtResponse> updateCourt(@PathVariable Long id, @ModelAttribute CourtRequest request) {
+        Court court = courtService.updateCourt(id, request);
+        return ResponseEntity.ok(mapToCourtResponse(court));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('OWNER') and @courtServiceImpl.isCourtOwner(#id)")
     public ResponseEntity<Void> deleteCourt(@PathVariable Long id) {
         courtService.deleteCourt(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Court> getCourtById(@PathVariable Long id) {
-        return ResponseEntity.ok(courtService.getCourtById(id));
+    public ResponseEntity<CourtResponse> getCourtById(@PathVariable Long id) {
+        Court court = courtService.getCourtById(id);
+        return ResponseEntity.ok(mapToCourtResponse(court));
     }
 
     @GetMapping
-    public ResponseEntity<List<Court>> getAllCourts() {
-        return ResponseEntity.ok(courtService.getAllCourts());
+    public ResponseEntity<List<CourtResponse>> getAllCourts() {
+        List<Court> courts = courtService.getAllCourts();
+        List<CourtResponse> responses = courts.stream()
+            .map(this::mapToCourtResponse)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/owner/{ownerId}")
-    public ResponseEntity<List<Court>> getCourtsByOwner(@PathVariable Long ownerId) {
-        return ResponseEntity.ok(courtService.getCourtsByOwner(ownerId));
+    public ResponseEntity<List<CourtResponse>> getCourtsByOwner(@PathVariable Long ownerId) {
+        List<Court> courts = courtService.getCourtsByOwner(ownerId);
+        List<CourtResponse> responses = courts.stream()
+            .map(this::mapToCourtResponse)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/available")
-    public ResponseEntity<List<Court>> getAvailableCourts() {
-        return ResponseEntity.ok(courtService.getAvailableCourts());
+    public ResponseEntity<List<CourtResponse>> getAvailableCourts() {
+        List<Court> courts = courtService.getAvailableCourts();
+        List<CourtResponse> responses = courts.stream()
+            .map(this::mapToCourtResponse)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<Page<Court>> searchCourts(
+    public ResponseEntity<Page<CourtResponse>> searchCourts(
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) String address,
@@ -74,6 +98,27 @@ public class CourtController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @PageableDefault(size = 9) Pageable pageable
     ) {
-        return ResponseEntity.ok(courtService.searchCourts(minPrice, maxPrice, address, courtType, status, date, pageable));
+        Page<Court> courts = courtService.searchCourts(minPrice, maxPrice, address, courtType, status, date, pageable);
+        Page<CourtResponse> responses = courts.map(this::mapToCourtResponse);
+        return ResponseEntity.ok(responses);
+    }
+
+    private CourtResponse mapToCourtResponse(Court court) {
+        List<String> imageUrls = court.getImages().stream()
+                .map(CourtImage::getImageUrl)
+                .collect(Collectors.toList());
+        return CourtResponse.builder()
+                .id(court.getId())
+                .name(court.getName())
+                .address(court.getAddress())
+                .description(court.getDescription())
+                .courtType(court.getCourtType())
+                .imageUrls(imageUrls)
+                .hourlyPrice(court.getHourlyPrice())
+                .status(court.getStatus())
+                .ownerId(court.getOwner().getId())
+                .ownerName(court.getOwner().getFullName())
+                .createdAt(court.getCreatedAt())
+                .build();
     }
 }

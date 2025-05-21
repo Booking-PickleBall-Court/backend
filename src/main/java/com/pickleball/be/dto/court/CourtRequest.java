@@ -2,8 +2,10 @@ package com.pickleball.be.dto.court;
 
 import com.pickleball.be.model.CourtType;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class CourtRequest {
@@ -12,4 +14,5 @@ public class CourtRequest {
     private String description;
     private BigDecimal hourlyPrice;
     private CourtType courtType;
+    private List<MultipartFile> images;
 } 
