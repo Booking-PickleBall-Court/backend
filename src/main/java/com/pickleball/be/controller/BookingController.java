@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -45,10 +46,10 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingsByUser(userId));
     }
 
-    @GetMapping("/court-slot/{courtSlotId}")
+    @GetMapping("/court/{courtId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
-    public ResponseEntity<List<Booking>> getBookingsByCourtSlot(@PathVariable Long courtSlotId) {
-        return ResponseEntity.ok(bookingService.getBookingsByCourtSlot(courtSlotId));
+    public ResponseEntity<List<Booking>> getBookingsByCourt(@PathVariable Long courtId) {
+        return ResponseEntity.ok(bookingService.getBookingsByCourt(courtId));
     }
 
     @PutMapping("/{id}/status")
@@ -74,8 +75,11 @@ public class BookingController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/court-slot/{courtSlotId}/availability")
-    public ResponseEntity<Boolean> checkCourtSlotAvailability(@PathVariable Long courtSlotId) {
-        return ResponseEntity.ok(bookingService.isCourtSlotAvailable(courtSlotId));
+    @GetMapping("/availability")
+    public ResponseEntity<Boolean> checkTimeSlotAvailability(
+            @RequestParam Long courtId,
+            @RequestParam LocalDateTime startTime,
+            @RequestParam LocalDateTime endTime) {
+        return ResponseEntity.ok(bookingService.isTimeSlotAvailable(courtId, startTime, endTime));
     }
 } 

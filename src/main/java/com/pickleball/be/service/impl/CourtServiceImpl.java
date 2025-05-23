@@ -5,6 +5,7 @@ import com.pickleball.be.model.*;
 import com.pickleball.be.repository.CourtRepository;
 import com.pickleball.be.repository.CourtImageRepository;
 import com.pickleball.be.repository.UserRepository;
+import com.pickleball.be.repository.BookingRepository;
 import com.pickleball.be.service.CourtService;
 import com.pickleball.be.service.CloudinaryService;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,6 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +37,7 @@ public class CourtServiceImpl implements CourtService {
     private final UserRepository userRepository;
     private final CourtImageRepository courtImageRepository;
     private final CloudinaryService cloudinaryService;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional
@@ -172,15 +177,16 @@ public class CourtServiceImpl implements CourtService {
         if (date != null) {
             spec = spec.and((root, query, cb) -> {
                 var subquery = query.subquery(Long.class);
-                var slotRoot = subquery.from(CourtSlot.class);
-                subquery.select(slotRoot.get("court").get("id"))
+                var bookingRoot = subquery.from(Booking.class);
+                subquery.select(bookingRoot.get("court").get("id"))
                         .where(cb.and(
-                            cb.equal(slotRoot.get("court"), root),
-                            cb.equal(slotRoot.get("date"), date),
-                            cb.equal(slotRoot.get("status"), "AVAILABLE"),
-                            cb.isTrue(slotRoot.get("isAvailable"))
+                            cb.equal(bookingRoot.get("court"), root),
+                            cb.equal(bookingRoot.get("status"), "CONFIRMED"),
+                            cb.between(bookingRoot.get("startTime"), 
+                                date.atStartOfDay(), 
+                                date.plusDays(1).atStartOfDay())
                         ));
-                return cb.exists(subquery);
+                return cb.not(cb.exists(subquery));
             });
         }
 

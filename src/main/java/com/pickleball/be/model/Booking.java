@@ -20,15 +20,18 @@ public class Booking {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "court_slot_id", nullable = false)
-    private CourtSlot courtSlot;
+    @JoinColumn(name = "court_id", nullable = false)
+    private Court court;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(nullable = false)
-    private LocalDateTime bookingTime;
+    private LocalDateTime startTime;
+
+    @Column(nullable = false)
+    private LocalDateTime endTime;
 
     @Column(nullable = false)
     private String status; // PENDING, CONFIRMED, CANCELLED, COMPLETED

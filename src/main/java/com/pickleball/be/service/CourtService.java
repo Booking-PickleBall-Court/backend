@@ -1,6 +1,7 @@
 package com.pickleball.be.service;
 
 import com.pickleball.be.dto.court.CourtRequest;
+import com.pickleball.be.dto.court.TimeSlotResponse;
 import com.pickleball.be.model.Court;
 import com.pickleball.be.model.CourtStatus;
 import com.pickleball.be.model.CourtType;
@@ -20,6 +21,6 @@ public interface CourtService {
     List<Court> getCourtsByOwner(Long ownerId);
     List<Court> getAvailableCourts();
     List<Court> getCourtsByMaxPrice(BigDecimal maxPrice);
-    Page<Court> searchCourts(BigDecimal minPrice, BigDecimal maxPrice, String address, 
+    Page<Court> searchCourts(BigDecimal minPrice, BigDecimal maxPrice, String address,
                            CourtType courtType, CourtStatus status, LocalDate date, Pageable pageable);
 }
