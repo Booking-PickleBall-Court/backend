@@ -1,7 +1,6 @@
 package com.pickleball.be.service;
 
 import com.pickleball.be.dto.court.CourtRequest;
-import com.pickleball.be.dto.court.TimeSlotResponse;
 import com.pickleball.be.model.Court;
 import com.pickleball.be.model.CourtStatus;
 import com.pickleball.be.model.CourtType;
