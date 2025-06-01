@@ -1,5 +1,6 @@
 package com.pickleball.be.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,6 +17,7 @@ public class CourtImage {
 
     @ManyToOne
     @JoinColumn(name = "court_id", nullable = false)
+    @JsonIgnore
     private Court court;
 
     @Column(name = "image_url", nullable = false)

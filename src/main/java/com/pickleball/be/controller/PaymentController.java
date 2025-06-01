@@ -49,7 +49,7 @@ public class PaymentController {
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:3000/payment/success?session_id={CHECKOUT_SESSION_ID}")
+                .setSuccessUrl("http://localhost:3000/confirmBooking?bookingId=" + booking.getId())
                 .setCancelUrl("http://localhost:3000/payment/cancel")
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
