@@ -204,7 +204,7 @@ public class CourtServiceImpl implements CourtService {
         court.setAddress(request.getAddress());
         court.setDescription(request.getDescription());
         court.setCourtType(request.getCourtType());
-        court.setHourlyPrice(request.getHourlyPrice());
+        court.setHourlyPrice(new BigDecimal(request.getHourlyPrice()));
     }
 
     public boolean isCourtOwner(Long courtId) {

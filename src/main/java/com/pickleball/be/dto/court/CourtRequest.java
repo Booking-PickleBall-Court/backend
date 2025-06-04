@@ -12,7 +12,7 @@ public class CourtRequest {
     private String name;
     private String address;
     private String description;
-    private BigDecimal hourlyPrice;
+    private String hourlyPrice;
     private CourtType courtType;
     private List<MultipartFile> images;
 } 
