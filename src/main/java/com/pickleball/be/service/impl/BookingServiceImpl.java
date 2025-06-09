@@ -161,10 +161,32 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private Double calculatePrice(Court court, LocalDateTime startTime, LocalDateTime endTime) {
-        // Implement your pricing logic here
-        // This is a simple example - you might want to add more complex pricing rules
-        long hours = java.time.Duration.between(startTime, endTime).toHours();
-        return court.getHourlyPrice().doubleValue() * hours;
+        Double hourlyPrice = court.getHourlyPrice().doubleValue();
+        Double totalPrice = 0.0;
+
+        LocalDateTime currentIntervalStart = startTime;
+
+        while (currentIntervalStart.isBefore(endTime)) {
+            LocalDateTime currentIntervalEnd = currentIntervalStart.plusMinutes(30);
+
+            // Ensure we don't go past the actual endTime of the booking
+            if (currentIntervalEnd.isAfter(endTime)) {
+                currentIntervalEnd = endTime;
+            }
+
+            long minutesInSlot = java.time.Duration.between(currentIntervalStart, currentIntervalEnd).toMinutes();
+            Double currentSlotPrice = hourlyPrice * (minutesInSlot / 60.0);
+
+            // Apply 10% increase for peak hours (from 17:00 onwards)
+            if (currentIntervalStart.getHour() >= 17) {
+                currentSlotPrice *= 1.10;
+            }
+
+            totalPrice += currentSlotPrice;
+            currentIntervalStart = currentIntervalEnd;
+        }
+
+        return totalPrice;
     }
 
     @Override

@@ -48,20 +48,51 @@ public class PaymentController {
 
     @PostMapping("/create-checkout-session")
     public ResponseEntity<Map<String, String>> createCheckoutSession(@RequestBody BookingRequest req) throws StripeException {
+        // Validate payment method
+        if (req.getPaymentMethod() == null || req.getPaymentMethod().trim().isEmpty()) {
+            throw new IllegalArgumentException("Payment method is required");
+        }
+
+        // If payment method is CASH, handle differently
+        if ("CASH".equalsIgnoreCase(req.getPaymentMethod())) {
+            // Create bookings without Stripe session
+            List<Booking> bookings = bookingService.createMultiBooking(req, userService.getCurrentUser().getId());
+            String bookingIds = bookings.stream()
+                .map(b -> b.getId().toString())
+                .collect(Collectors.joining(","));
+            
+            Map<String, String> responseData = new HashMap<>();
+            responseData.put("paymentMethod", "CASH");
+            responseData.put("bookingIds", bookingIds);
+            responseData.put("totalAmount", String.valueOf(bookings.stream()
+                .mapToDouble(Booking::getTotalPrice)
+                .sum()));
+            return ResponseEntity.ok(responseData);
+        }
+
+        // For online payment methods (CREDIT_CARD, etc.)
         Stripe.apiKey = stripeSecretKey;
         Long userId = userService.getCurrentUser().getId();
-        // Tạo booking cho từng subcourt
+        
+        // Create bookings
         List<Booking> bookings = bookingService.createMultiBooking(req, userId);
-        double totalPrice = bookings.stream().mapToDouble(Booking::getTotalPrice).sum();
-        String bookingIds = bookings.stream().map(b -> b.getId().toString()).collect(Collectors.joining(","));
+        double totalPrice = bookings.stream()
+            .mapToDouble(Booking::getTotalPrice)
+            .sum();
+            
+        String bookingIds = bookings.stream()
+            .map(b -> b.getId().toString())
+            .collect(Collectors.joining(","));
+
+        // Create Stripe checkout session
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl("http://localhost:3000/confirmBooking?bookingIds=" + bookingIds + "&status=success")
                 .setCancelUrl("http://localhost:3000/payment/cancel")
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency("usd")
-                                .setUnitAmount((long) (totalPrice * 100))
+                                .setCurrency("vnd")
+                                .setUnitAmount((long)totalPrice)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("Court Booking")
                                         .setDescription("Booking for court " + bookings.get(0).getCourt().getName())
@@ -71,10 +102,14 @@ public class PaymentController {
                         .build())
                 .putMetadata("bookingIds", bookingIds)
                 .build();
+
         Session session = Session.create(params);
         Map<String, String> responseData = new HashMap<>();
         responseData.put("id", session.getId());
         responseData.put("url", session.getUrl());
+        responseData.put("paymentMethod", "ONLINE");
+        responseData.put("bookingIds", bookingIds);
+        responseData.put("totalAmount", String.valueOf(totalPrice));
         return ResponseEntity.ok(responseData);
     }
 
