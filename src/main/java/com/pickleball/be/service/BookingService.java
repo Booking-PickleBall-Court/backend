@@ -2,6 +2,7 @@ package com.pickleball.be.service;
 
 import com.pickleball.be.dto.CreateBookingDTO;
 import com.pickleball.be.model.Booking;
+import com.pickleball.be.dto.booking.BookingRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,5 +16,6 @@ public interface BookingService {
     Booking updateBookingStatus(Long id, String status);
     Booking updatePaymentStatus(Long id, String paymentStatus);
     void deleteBooking(Long id);
-    boolean isTimeSlotAvailable(Long courtId, LocalDateTime startTime, LocalDateTime endTime);
+    List<Booking> getBookingsByCourtAndDateRange(Long courtId, LocalDateTime start, LocalDateTime end);
+    List<Booking> createMultiBooking(BookingRequest req, Long userId);
 } 

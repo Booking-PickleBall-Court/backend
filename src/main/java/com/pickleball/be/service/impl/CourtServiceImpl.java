@@ -1,6 +1,7 @@
 package com.pickleball.be.service.impl;
 
 import com.pickleball.be.dto.court.CourtRequest;
+import com.pickleball.be.dto.court.SubCourtRequest;
 import com.pickleball.be.model.*;
 import com.pickleball.be.repository.CourtRepository;
 import com.pickleball.be.repository.CourtImageRepository;
@@ -47,7 +48,17 @@ public class CourtServiceImpl implements CourtService {
         mapToEntity(request, court);
         court.setOwner(currentOwner);
         court.setStatus(CourtStatus.AVAILABLE);
-        
+
+        court.getSubCourts().clear();
+        if (request.getSubCourts() != null) {
+            for (SubCourtRequest subCourtReq : request.getSubCourts()) {
+                SubCourt subCourt = new SubCourt();
+                subCourt.setName(subCourtReq.getName());
+                subCourt.setCourt(court);
+                court.getSubCourts().add(subCourt);
+            }
+        }
+
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             try {
                 List<Map<String, String>> uploadResults = cloudinaryService.uploadImages(request.getImages());
@@ -62,7 +73,7 @@ public class CourtServiceImpl implements CourtService {
                 throw new RuntimeException("Failed to upload images", e);
             }
         }
-        
+
         return courtRepository.save(court);
     }
 
@@ -71,7 +82,17 @@ public class CourtServiceImpl implements CourtService {
     public Court updateCourt(Long id, CourtRequest request) {
         Court court = getCourtById(id);
         mapToEntity(request, court);
-        
+
+        court.getSubCourts().clear();
+        if (request.getSubCourts() != null) {
+            for (SubCourtRequest subCourtReq : request.getSubCourts()) {
+                SubCourt subCourt = new SubCourt();
+                subCourt.setName(subCourtReq.getName());
+                subCourt.setCourt(court);
+                court.getSubCourts().add(subCourt);
+            }
+        }
+
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             // Delete existing images from Cloudinary
             court.getImages().forEach(image -> {
@@ -81,10 +102,10 @@ public class CourtServiceImpl implements CourtService {
                     throw new RuntimeException("Failed to delete old image", e);
                 }
             });
-            
+
             // Clear existing images
             court.getImages().clear();
-            
+
             // Upload new images
             try {
                 List<Map<String, String>> uploadResults = cloudinaryService.uploadImages(request.getImages());
@@ -99,7 +120,7 @@ public class CourtServiceImpl implements CourtService {
                 throw new RuntimeException("Failed to upload images", e);
             }
         }
-        
+
         return courtRepository.save(court);
     }
 

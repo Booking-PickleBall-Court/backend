@@ -23,4 +23,13 @@ public class CourtResponse {
     private Long ownerId;
     private String ownerName;
     private LocalDateTime createdAt;
+    private List<SubCourtResponse> subCourts;
+
+    @Data
+    @Builder
+    public static class SubCourtResponse {
+        private Long id;
+        private String name;
+        private CourtStatus status;
+    }
 }

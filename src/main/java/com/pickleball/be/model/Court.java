@@ -38,6 +38,9 @@ public class Court {
     @OneToMany(mappedBy = "court", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourtImage> images = new ArrayList<>();
 
+    @OneToMany(mappedBy = "court", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SubCourt> subCourts = new ArrayList<>();
+
     @Column(name = "hourly_price", nullable = false)
     private BigDecimal hourlyPrice;
 

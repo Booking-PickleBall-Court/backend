@@ -21,9 +21,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStatus(String status);
     List<Booking> findByUserIdAndStatus(Long userId, String status);
     
-    @Query("SELECT b FROM Booking b WHERE b.court.id = ?1 AND b.startTime <= ?2 AND b.endTime >= ?3 AND b.status = 'CONFIRMED'")
-    List<Booking> findOverlappingBookings(Long courtId, LocalDateTime startTime, LocalDateTime endTime);
-    
     @Query("SELECT b FROM Booking b WHERE b.court.id = ?1 AND b.startTime >= ?2 AND b.startTime < ?3")
     List<Booking> findByCourtAndDateRange(Long courtId, LocalDateTime startDate, LocalDateTime endDate);
+
+    @Query("SELECT b FROM Booking b JOIN b.subCourts sc WHERE sc.id = ?1 AND b.startTime < ?3 AND b.endTime > ?2 AND b.status = 'CONFIRMED'")
+    List<Booking> findOverlappingBookingsForSubCourt(Long subCourtId, LocalDateTime startTime, LocalDateTime endTime);
 } 

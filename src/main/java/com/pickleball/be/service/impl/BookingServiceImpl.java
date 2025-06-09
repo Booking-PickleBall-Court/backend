@@ -1,11 +1,14 @@
 package com.pickleball.be.service.impl;
 
 import com.pickleball.be.dto.CreateBookingDTO;
+import com.pickleball.be.dto.booking.BookingRequest;
 import com.pickleball.be.model.Booking;
 import com.pickleball.be.model.Court;
+import com.pickleball.be.model.SubCourt;
 import com.pickleball.be.model.User;
 import com.pickleball.be.repository.BookingRepository;
 import com.pickleball.be.repository.CourtRepository;
+import com.pickleball.be.repository.SubCourtRepository;
 import com.pickleball.be.repository.UserRepository;
 import com.pickleball.be.service.BookingService;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -28,6 +33,9 @@ public class BookingServiceImpl implements BookingService {
     @Autowired
     private CourtRepository courtRepository;
 
+    @Autowired
+    private SubCourtRepository subCourtRepository;
+
     @Override
     @Transactional
     public Booking createBooking(CreateBookingDTO bookingDTO, Long userId) {
@@ -37,20 +45,29 @@ public class BookingServiceImpl implements BookingService {
         Court court = courtRepository.findById(bookingDTO.getCourtId())
                 .orElseThrow(() -> new EntityNotFoundException("Court not found"));
 
-        // Check for overlapping bookings
-        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
-            court.getId(), 
-            bookingDTO.getStartTime(), 
-            bookingDTO.getEndTime()
-        );
-
-        if (!overlappingBookings.isEmpty()) {
-            throw new IllegalStateException("The selected time slot is already booked");
+        // Lấy danh sách subCourt
+        List<SubCourt> subCourts = new ArrayList<>();
+        if (bookingDTO.getSubCourtIds() != null && !bookingDTO.getSubCourtIds().isEmpty()) {
+            for (Long subCourtId : bookingDTO.getSubCourtIds()) {
+                SubCourt subCourt = subCourtRepository.findById(subCourtId)
+                        .orElseThrow(() -> new EntityNotFoundException("SubCourt not found: " + subCourtId));
+                // Kiểm tra overlapping cho từng subCourt
+                List<Booking> overlapping = bookingRepository.findOverlappingBookingsForSubCourt(
+                    subCourtId, bookingDTO.getStartTime(), bookingDTO.getEndTime()
+                );
+                if (!overlapping.isEmpty()) {
+                    throw new IllegalStateException("SubCourt " + subCourt.getName() + " is already booked in the selected time slot");
+                }
+                subCourts.add(subCourt);
+            }
+        } else {
+            throw new IllegalArgumentException("subCourtIds is required");
         }
 
         Booking booking = new Booking();
         booking.setUser(user);
         booking.setCourt(court);
+        booking.setSubCourts(subCourts);
         booking.setStartTime(bookingDTO.getStartTime());
         booking.setEndTime(bookingDTO.getEndTime());
         booking.setStatus("PENDING");
@@ -109,9 +126,37 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public boolean isTimeSlotAvailable(Long courtId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(courtId, startTime, endTime);
-        return overlappingBookings.isEmpty();
+    public List<Booking> getBookingsByCourtAndDateRange(Long courtId, LocalDateTime start, LocalDateTime end) {
+        return bookingRepository.findByCourtAndDateRange(courtId, start, end);
+    }
+
+    @Override
+    public List<Booking> createMultiBooking(BookingRequest req, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Court court = courtRepository.findById(req.getCourtId()).orElseThrow(() -> new EntityNotFoundException("Court not found"));
+        List<Booking> result = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        for (BookingRequest.SubCourtBookingRequest b : req.getBookings()) {
+            SubCourt subCourt = subCourtRepository.findById(b.getSubCourtId()).orElseThrow(() -> new EntityNotFoundException("SubCourt not found: " + b.getSubCourtId()));
+            LocalDateTime start = LocalDateTime.parse(b.getStartTime(), formatter);
+            LocalDateTime end = LocalDateTime.parse(b.getEndTime(), formatter);
+            // Kiểm tra overlapping cho từng subCourt
+            List<Booking> overlapping = bookingRepository.findOverlappingBookingsForSubCourt(subCourt.getId(), start, end);
+            if (!overlapping.isEmpty()) throw new IllegalStateException("SubCourt " + subCourt.getName() + " is already booked in the selected time slot");
+            Booking booking = new Booking();
+            booking.setUser(user);
+            booking.setCourt(court);
+            booking.setSubCourts(List.of(subCourt));
+            booking.setStartTime(start);
+            booking.setEndTime(end);
+            booking.setStatus("PENDING");
+            booking.setPaymentStatus("PENDING");
+            booking.setPaymentMethod(req.getPaymentMethod());
+            booking.setNotes(req.getNotes());
+            booking.setTotalPrice(calculatePrice(court, start, end));
+            result.add(bookingRepository.save(booking));
+        }
+        return result;
     }
 
     private Double calculatePrice(Court court, LocalDateTime startTime, LocalDateTime endTime) {

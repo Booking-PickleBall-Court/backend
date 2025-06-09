@@ -6,6 +6,7 @@ import com.pickleball.be.model.Court;
 import com.pickleball.be.model.CourtImage;
 import com.pickleball.be.model.CourtStatus;
 import com.pickleball.be.model.CourtType;
+import com.pickleball.be.model.SubCourt;
 import com.pickleball.be.service.CloudinaryImageService;
 import com.pickleball.be.service.CourtService;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,13 @@ public class CourtController {
         List<String> imageUrls = court.getImages().stream()
                 .map(CourtImage::getImageUrl)
                 .collect(Collectors.toList());
+        List<CourtResponse.SubCourtResponse> subCourtResponses = court.getSubCourts().stream()
+                .map(subCourt -> CourtResponse.SubCourtResponse.builder()
+                        .id(subCourt.getId())
+                        .name(subCourt.getName())
+                        .status(subCourt.getStatus())
+                        .build())
+                .collect(Collectors.toList());
         return CourtResponse.builder()
                 .id(court.getId())
                 .name(court.getName())
@@ -119,6 +127,7 @@ public class CourtController {
                 .ownerId(court.getOwner().getId())
                 .ownerName(court.getOwner().getFullName())
                 .createdAt(court.getCreatedAt())
+                .subCourts(subCourtResponses)
                 .build();
     }
 }

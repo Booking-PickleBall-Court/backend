@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.pickleball.be.dto.court.SubCourtRequest;
 
 @Data
 public class CourtRequest {
@@ -15,4 +16,5 @@ public class CourtRequest {
     private String hourlyPrice;
     private CourtType courtType;
     private List<MultipartFile> images;
+    private List<SubCourtRequest> subCourts;
 } 
