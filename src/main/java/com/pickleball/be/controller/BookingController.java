@@ -178,4 +178,10 @@ public class BookingController {
 
         return ResponseEntity.ok(Map.of("bookedSlots", bookedSlots));
     }
+
+    @GetMapping("/owner/{ownerId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<List<BookingHistoryResponse>> getOwnerCourtBookings(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(bookingService.getOwnerCourtBookings(ownerId));
+    }
 } 

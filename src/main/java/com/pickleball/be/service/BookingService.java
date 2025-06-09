@@ -3,6 +3,7 @@ package com.pickleball.be.service;
 import com.pickleball.be.dto.CreateBookingDTO;
 import com.pickleball.be.model.Booking;
 import com.pickleball.be.dto.booking.BookingRequest;
+import com.pickleball.be.dto.booking.BookingHistoryResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,4 +19,5 @@ public interface BookingService {
     void deleteBooking(Long id);
     List<Booking> getBookingsByCourtAndDateRange(Long courtId, LocalDateTime start, LocalDateTime end);
     List<Booking> createMultiBooking(BookingRequest req, Long userId);
+    List<BookingHistoryResponse> getOwnerCourtBookings(Long ownerId);
 } 

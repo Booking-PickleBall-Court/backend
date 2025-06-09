@@ -2,6 +2,10 @@ package com.pickleball.be.controller;
 
 import com.pickleball.be.dto.court.CourtRequest;
 import com.pickleball.be.dto.court.CourtResponse;
+import com.pickleball.be.dto.court.CourtRevenueResponse;
+import com.pickleball.be.dto.court.OwnerRevenueResponse;
+import com.pickleball.be.dto.court.MonthlyRevenueResponse;
+import com.pickleball.be.dto.court.TopCustomerResponse;
 import com.pickleball.be.model.Court;
 import com.pickleball.be.model.CourtImage;
 import com.pickleball.be.model.CourtStatus;
@@ -102,6 +106,54 @@ public class CourtController {
         Page<Court> courts = courtService.searchCourts(minPrice, maxPrice, address, courtType, status, date, pageable);
         Page<CourtResponse> responses = courts.map(this::mapToCourtResponse);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{id}/revenue")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<CourtRevenueResponse> getCourtRevenue(@PathVariable Long id) {
+        return ResponseEntity.ok(courtService.getCourtRevenue(id));
+    }
+
+    @GetMapping("/revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CourtRevenueResponse>> getAllCourtsRevenue() {
+        return ResponseEntity.ok(courtService.getAllCourtsRevenue());
+    }
+
+    @GetMapping("/owner/{ownerId}/revenue")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<OwnerRevenueResponse> getOwnerRevenue(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(courtService.getOwnerRevenue(ownerId));
+    }
+
+    @GetMapping("/owners/revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<OwnerRevenueResponse>> getAllOwnersRevenue() {
+        return ResponseEntity.ok(courtService.getAllOwnersRevenue());
+    }
+
+    @GetMapping("/{id}/monthly-revenue")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<List<MonthlyRevenueResponse>> getMonthlyRevenue(@PathVariable Long id) {
+        return ResponseEntity.ok(courtService.getMonthlyRevenue(id));
+    }
+
+    @GetMapping("/owner/{ownerId}/monthly-revenue")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<List<MonthlyRevenueResponse>> getOwnerMonthlyRevenue(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(courtService.getOwnerMonthlyRevenue(ownerId));
+    }
+
+    @GetMapping("/monthly-revenue")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<MonthlyRevenueResponse>> getAllCourtsMonthlyRevenue() {
+        return ResponseEntity.ok(courtService.getAllCourtsMonthlyRevenue());
+    }
+
+    @GetMapping("/owner/{ownerId}/top-customers")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<List<TopCustomerResponse>> getTopCustomers(@PathVariable Long ownerId) {
+        return ResponseEntity.ok(courtService.getTopCustomers(ownerId));
     }
 
     private CourtResponse mapToCourtResponse(Court court) {

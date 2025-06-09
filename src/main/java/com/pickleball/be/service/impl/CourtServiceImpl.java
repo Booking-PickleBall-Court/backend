@@ -2,6 +2,10 @@ package com.pickleball.be.service.impl;
 
 import com.pickleball.be.dto.court.CourtRequest;
 import com.pickleball.be.dto.court.SubCourtRequest;
+import com.pickleball.be.dto.court.CourtRevenueResponse;
+import com.pickleball.be.dto.court.OwnerRevenueResponse;
+import com.pickleball.be.dto.court.MonthlyRevenueResponse;
+import com.pickleball.be.dto.court.TopCustomerResponse;
 import com.pickleball.be.model.*;
 import com.pickleball.be.repository.CourtRepository;
 import com.pickleball.be.repository.CourtImageRepository;
@@ -26,9 +30,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service("courtServiceImpl")
 @RequiredArgsConstructor
@@ -233,5 +240,205 @@ public class CourtServiceImpl implements CourtService {
         String currentUserEmail = authentication.getName();
         Court court = getCourtById(courtId);
         return court.getOwner().getEmail().equals(currentUserEmail);
+    }
+
+    @Override
+    public CourtRevenueResponse getCourtRevenue(Long courtId) {
+        Court court = getCourtById(courtId);
+        List<Booking> bookings = bookingRepository.findByCourtId(courtId);
+        
+        BigDecimal totalRevenue = bookings.stream()
+            .filter(b -> "PAID".equals(b.getPaymentStatus()))
+            .map(b -> BigDecimal.valueOf(b.getTotalPrice()))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+        int totalBookings = bookings.size();
+        int totalHoursBooked = bookings.stream()
+            .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+            .sum();
+            
+        return CourtRevenueResponse.builder()
+            .courtId(court.getId())
+            .courtName(court.getName())
+            .totalRevenue(totalRevenue)
+            .totalBookings(totalBookings)
+            .totalHoursBooked(totalHoursBooked)
+            .build();
+    }
+
+    @Override
+    public List<CourtRevenueResponse> getAllCourtsRevenue() {
+        List<Court> courts = courtRepository.findAll();
+        return courts.stream()
+            .map(court -> getCourtRevenue(court.getId()))
+            .toList();
+    }
+
+    @Override
+    public OwnerRevenueResponse getOwnerRevenue(Long ownerId) {
+        List<Court> ownerCourts = courtRepository.findByOwnerId(ownerId);
+        if (ownerCourts.isEmpty()) {
+            throw new EntityNotFoundException("No courts found for owner with ID: " + ownerId);
+        }
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        int totalBookings = 0;
+        int totalHoursBooked = 0;
+
+        for (Court court : ownerCourts) {
+            CourtRevenueResponse courtRevenue = getCourtRevenue(court.getId());
+            totalRevenue = totalRevenue.add(courtRevenue.getTotalRevenue());
+            totalBookings += courtRevenue.getTotalBookings();
+            totalHoursBooked += courtRevenue.getTotalHoursBooked();
+        }
+
+        User owner = ownerCourts.get(0).getOwner();
+        return OwnerRevenueResponse.builder()
+            .ownerId(owner.getId())
+            .ownerName(owner.getFullName())
+            .totalRevenue(totalRevenue)
+            .totalCourts(ownerCourts.size())
+            .totalBookings(totalBookings)
+            .totalHoursBooked(totalHoursBooked)
+            .build();
+    }
+
+    @Override
+    public List<OwnerRevenueResponse> getAllOwnersRevenue() {
+        List<User> owners = userRepository.findByRole(UserRole.OWNER);
+        return owners.stream()
+            .map(owner -> getOwnerRevenue(owner.getId()))
+            .toList();
+    }
+
+    @Override
+    public List<MonthlyRevenueResponse> getMonthlyRevenue(Long courtId) {
+        Court court = getCourtById(courtId);
+        LocalDateTime sixMonthsAgo = LocalDateTime.now().minusMonths(6);
+        List<Booking> bookings = bookingRepository.findByCourtId(courtId).stream()
+            .filter(b -> b.getStartTime().isAfter(sixMonthsAgo) && "PAID".equals(b.getPaymentStatus()))
+            .toList();
+
+        return calculateMonthlyRevenue(bookings);
+    }
+
+    @Override
+    public List<MonthlyRevenueResponse> getOwnerMonthlyRevenue(Long ownerId) {
+        List<Court> ownerCourts = courtRepository.findByOwnerId(ownerId);
+        if (ownerCourts.isEmpty()) {
+            throw new EntityNotFoundException("No courts found for owner with ID: " + ownerId);
+        }
+
+        LocalDateTime sixMonthsAgo = LocalDateTime.now().minusMonths(6);
+        List<Booking> allBookings = new ArrayList<>();
+        
+        for (Court court : ownerCourts) {
+            List<Booking> courtBookings = bookingRepository.findByCourtId(court.getId()).stream()
+                .filter(b -> b.getStartTime().isAfter(sixMonthsAgo) && "PAID".equals(b.getPaymentStatus()))
+                .toList();
+            allBookings.addAll(courtBookings);
+        }
+
+        return calculateMonthlyRevenue(allBookings);
+    }
+
+    @Override
+    public List<MonthlyRevenueResponse> getAllCourtsMonthlyRevenue() {
+        LocalDateTime sixMonthsAgo = LocalDateTime.now().minusMonths(6);
+        List<Booking> allBookings = bookingRepository.findAll().stream()
+            .filter(b -> b.getStartTime().isAfter(sixMonthsAgo) && "PAID".equals(b.getPaymentStatus()))
+            .toList();
+
+        return calculateMonthlyRevenue(allBookings);
+    }
+
+    private List<MonthlyRevenueResponse> calculateMonthlyRevenue(List<Booking> bookings) {
+        // Get current month and 5 months before
+        YearMonth currentMonth = YearMonth.now();
+        List<YearMonth> lastSixMonths = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            lastSixMonths.add(currentMonth.minusMonths(i));
+        }
+
+        // Group bookings by month
+        Map<YearMonth, List<Booking>> bookingsByMonth = bookings.stream()
+            .collect(Collectors.groupingBy(b -> YearMonth.from(b.getStartTime())));
+
+        // Create response for each month
+        return lastSixMonths.stream()
+            .map(month -> {
+                List<Booking> monthBookings = bookingsByMonth.getOrDefault(month, Collections.emptyList());
+                BigDecimal totalRevenue = monthBookings.stream()
+                    .map(b -> BigDecimal.valueOf(b.getTotalPrice()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                
+                int totalHoursBooked = monthBookings.stream()
+                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+                    .sum();
+
+                return MonthlyRevenueResponse.builder()
+                    .month(month)
+                    .totalRevenue(totalRevenue)
+                    .totalHoursBooked(totalHoursBooked)
+                    .totalBookings(monthBookings.size())
+                    .build();
+            })
+            .toList();
+    }
+
+    @Override
+    public List<TopCustomerResponse> getTopCustomers(Long ownerId) {
+        List<Court> ownerCourts = courtRepository.findByOwnerId(ownerId);
+        if (ownerCourts.isEmpty()) {
+            throw new EntityNotFoundException("No courts found for owner with ID: " + ownerId);
+        }
+
+        // Get all bookings for owner's courts
+        List<Booking> allBookings = new ArrayList<>();
+        for (Court court : ownerCourts) {
+            List<Booking> courtBookings = bookingRepository.findByCourtId(court.getId()).stream()
+                .filter(b -> "PAID".equals(b.getPaymentStatus()))
+                .toList();
+            allBookings.addAll(courtBookings);
+        }
+
+        // Group bookings by customer
+        Map<User, List<Booking>> bookingsByCustomer = allBookings.stream()
+            .collect(Collectors.groupingBy(Booking::getUser));
+
+        // Calculate statistics for each customer
+        List<TopCustomerResponse> customerStats = bookingsByCustomer.entrySet().stream()
+            .map(entry -> {
+                User customer = entry.getKey();
+                List<Booking> customerBookings = entry.getValue();
+
+                int totalBookings = customerBookings.size();
+                int totalHoursBooked = customerBookings.stream()
+                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+                    .sum();
+                BigDecimal totalSpent = customerBookings.stream()
+                    .map(b -> BigDecimal.valueOf(b.getTotalPrice()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                LocalDateTime lastBookingDate = customerBookings.stream()
+                    .map(Booking::getStartTime)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(null);
+
+                return TopCustomerResponse.builder()
+                    .customerId(customer.getId())
+                    .customerName(customer.getFullName())
+                    .customerEmail(customer.getEmail())
+                    .customerPhone(customer.getPhoneNumber())
+                    .totalBookings(totalBookings)
+                    .totalHoursBooked(totalHoursBooked)
+                    .totalSpent(totalSpent)
+                    .lastBookingDate(lastBookingDate)
+                    .build();
+            })
+            .sorted((c1, c2) -> c2.getTotalSpent().compareTo(c1.getTotalSpent())) // Sort by total spent in descending order
+            .limit(5) // Get top 5 customers
+            .toList();
+
+        return customerStats;
     }
 }

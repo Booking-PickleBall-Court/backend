@@ -1,11 +1,16 @@
 package com.pickleball.be.service;
 
 import com.pickleball.be.dto.court.CourtRequest;
+import com.pickleball.be.dto.court.CourtRevenueResponse;
+import com.pickleball.be.dto.court.MonthlyRevenueResponse;
+import com.pickleball.be.dto.court.OwnerRevenueResponse;
+import com.pickleball.be.dto.court.TopCustomerResponse;
 import com.pickleball.be.model.Court;
 import com.pickleball.be.model.CourtStatus;
 import com.pickleball.be.model.CourtType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,4 +27,12 @@ public interface CourtService {
     List<Court> getCourtsByMaxPrice(BigDecimal maxPrice);
     Page<Court> searchCourts(BigDecimal minPrice, BigDecimal maxPrice, String address,
                            CourtType courtType, CourtStatus status, LocalDate date, Pageable pageable);
+    CourtRevenueResponse getCourtRevenue(Long courtId);
+    List<CourtRevenueResponse> getAllCourtsRevenue();
+    OwnerRevenueResponse getOwnerRevenue(Long ownerId);
+    List<OwnerRevenueResponse> getAllOwnersRevenue();
+    List<MonthlyRevenueResponse> getMonthlyRevenue(Long courtId);
+    List<MonthlyRevenueResponse> getOwnerMonthlyRevenue(Long ownerId);
+    List<MonthlyRevenueResponse> getAllCourtsMonthlyRevenue();
+    List<TopCustomerResponse> getTopCustomers(Long ownerId);
 }

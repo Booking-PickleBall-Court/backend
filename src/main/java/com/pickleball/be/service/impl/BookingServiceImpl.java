@@ -1,6 +1,7 @@
 package com.pickleball.be.service.impl;
 
 import com.pickleball.be.dto.CreateBookingDTO;
+import com.pickleball.be.dto.booking.BookingHistoryResponse;
 import com.pickleball.be.dto.booking.BookingRequest;
 import com.pickleball.be.model.Booking;
 import com.pickleball.be.model.Court;
@@ -164,5 +165,46 @@ public class BookingServiceImpl implements BookingService {
         // This is a simple example - you might want to add more complex pricing rules
         long hours = java.time.Duration.between(startTime, endTime).toHours();
         return court.getHourlyPrice().doubleValue() * hours;
+    }
+
+    @Override
+    public List<BookingHistoryResponse> getOwnerCourtBookings(Long ownerId) {
+        List<Court> ownerCourts = courtRepository.findByOwnerId(ownerId);
+        if (ownerCourts.isEmpty()) {
+            throw new EntityNotFoundException("No courts found for owner with ID: " + ownerId);
+        }
+
+        List<Booking> allBookings = new ArrayList<>();
+        for (Court court : ownerCourts) {
+            List<Booking> courtBookings = bookingRepository.findByCourtId(court.getId());
+            allBookings.addAll(courtBookings);
+        }
+
+        return allBookings.stream()
+            .map(b -> BookingHistoryResponse.builder()
+                .id(b.getId())
+                .courtId(b.getCourt().getId())
+                .courtName(b.getCourt().getName())
+                .subCourts(
+                    b.getSubCourts() != null
+                    ? b.getSubCourts().stream()
+                        .map(sc -> BookingHistoryResponse.SubCourtInfo.builder()
+                            .id(sc.getId())
+                            .name(sc.getName())
+                            .build())
+                        .toList()
+                    : List.of()
+                )
+                .startTime(b.getStartTime())
+                .endTime(b.getEndTime())
+                .status(b.getStatus())
+                .totalPrice(b.getTotalPrice())
+                .paymentStatus(b.getPaymentStatus())
+                .paymentMethod(b.getPaymentMethod())
+                .notes(b.getNotes())
+                .createdAt(b.getCreatedAt())
+                .build())
+            .sorted((b1, b2) -> b2.getStartTime().compareTo(b1.getStartTime())) // Sort by start time descending
+            .toList();
     }
 } 
