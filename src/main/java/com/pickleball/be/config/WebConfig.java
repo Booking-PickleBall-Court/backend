@@ -16,8 +16,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("https://picklenetweb.vercel.app")
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
+                .allowedOriginPatterns("https://picklenetweb.vercel.app")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
