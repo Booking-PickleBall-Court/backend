@@ -35,4 +35,7 @@ public interface CourtService {
     List<MonthlyRevenueResponse> getOwnerMonthlyRevenue(Long ownerId);
     List<MonthlyRevenueResponse> getAllCourtsMonthlyRevenue();
     List<TopCustomerResponse> getTopCustomers(Long ownerId);
+    
+    // New method for updating court status
+    Court updateCourtStatus(Long courtId, CourtStatus status);
 }

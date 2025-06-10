@@ -441,4 +441,12 @@ public class CourtServiceImpl implements CourtService {
 
         return customerStats;
     }
+
+    @Override
+    @Transactional
+    public Court updateCourtStatus(Long courtId, CourtStatus status) {
+        Court court = getCourtById(courtId);
+        court.setStatus(status);
+        return courtRepository.save(court);
+    }
 }

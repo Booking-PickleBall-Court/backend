@@ -20,7 +20,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -154,6 +157,22 @@ public class CourtController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     public ResponseEntity<List<TopCustomerResponse>> getTopCustomers(@PathVariable Long ownerId) {
         return ResponseEntity.ok(courtService.getTopCustomers(ownerId));
+    }
+
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    public ResponseEntity<CourtResponse> updateCourtStatus(
+            @PathVariable Long id,
+            @RequestParam CourtStatus status) {
+        // Only admin can set status to UNAVAILABLE
+        if (status == CourtStatus.UNAVAILABLE) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                throw new AccessDeniedException("Only administrators can set court status to UNAVAILABLE");
+            }
+        }
+        Court court = courtService.updateCourtStatus(id, status);
+        return ResponseEntity.ok(mapToCourtResponse(court));
     }
 
     private CourtResponse mapToCourtResponse(Court court) {
