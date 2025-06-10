@@ -1,5 +1,5 @@
 # Use the official Maven image to build the project
-FROM maven:4.0.0-openjdk-17 AS build
+FROM maven:3.9.6-openjdk-17 AS build
 WORKDIR /workspace
 
 # Copy the Maven project files to the container
