@@ -3,6 +3,8 @@ package com.pickleball.be.service.impl;
 import com.pickleball.be.dto.auth.LoginRequest;
 import com.pickleball.be.dto.auth.RegisterRequest;
 import com.pickleball.be.model.User;
+import com.pickleball.be.model.UserRole;
+import com.pickleball.be.model.UserStatus;
 import com.pickleball.be.repository.UserRepository;
 import com.pickleball.be.security.JwtTokenProvider;
 import com.pickleball.be.service.UserService;
@@ -13,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -92,5 +96,29 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    public List<User> getUsersByRole(UserRole role) {
+        return userRepository.findByRole(role);
+    }
+
+    @Override
+    public User updateUserStatus(Long userId, UserStatus status) {
+        User user = getUserById(userId);
+        user.setStatus(status);
+        return userRepository.save(user);
+    }
+
+    @Override
+    public User updateUserRole(Long userId, UserRole role) {
+        User user = getUserById(userId);
+        user.setRole(role);
+        return userRepository.save(user);
     }
 } 
