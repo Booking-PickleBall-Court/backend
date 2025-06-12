@@ -20,4 +20,5 @@ public interface BookingService {
     List<Booking> getBookingsByCourtAndDateRange(Long courtId, LocalDateTime start, LocalDateTime end);
     List<Booking> createMultiBooking(BookingRequest req, Long userId);
     List<BookingHistoryResponse> getOwnerCourtBookings(Long ownerId);
+    List<Booking> createMultiBookingForOwner(BookingRequest req, Long ownerId);
 } 

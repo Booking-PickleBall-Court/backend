@@ -160,6 +160,39 @@ public class BookingServiceImpl implements BookingService {
         return result;
     }
 
+    @Override
+    @Transactional
+    public List<Booking> createMultiBookingForOwner(BookingRequest req, Long ownerId) {
+        User owner = userRepository.findById(ownerId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Court court = courtRepository.findById(req.getCourtId())
+            .orElseThrow(() -> new EntityNotFoundException("Court not found"));
+        List<Booking> result = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        for (BookingRequest.SubCourtBookingRequest b : req.getBookings()) {
+            SubCourt subCourt = subCourtRepository.findById(b.getSubCourtId())
+                .orElseThrow(() -> new EntityNotFoundException("SubCourt not found: " + b.getSubCourtId()));
+            LocalDateTime start = LocalDateTime.parse(b.getStartTime(), formatter);
+            LocalDateTime end = LocalDateTime.parse(b.getEndTime(), formatter);
+            // Kiểm tra overlapping cho từng subCourt
+            List<Booking> overlapping = bookingRepository.findOverlappingBookingsForSubCourt(subCourt.getId(), start, end);
+            if (!overlapping.isEmpty()) throw new IllegalStateException("SubCourt " + subCourt.getName() + " is already booked in the selected time slot");
+            Booking booking = new Booking();
+            booking.setUser(owner);
+            booking.setCourt(court);
+            booking.setSubCourts(List.of(subCourt));
+            booking.setStartTime(start);
+            booking.setEndTime(end);
+            booking.setStatus("CONFIRMED");
+            booking.setPaymentStatus("PAID");
+            booking.setPaymentMethod("OWNER_MANUAL");
+            booking.setNotes(req.getNotes());
+            booking.setTotalPrice(calculatePrice(court, start, end));
+            result.add(bookingRepository.save(booking));
+        }
+        return result;
+    }
+
     private Double calculatePrice(Court court, LocalDateTime startTime, LocalDateTime endTime) {
         Double hourlyPrice = court.getHourlyPrice().doubleValue();
         Double totalPrice = 0.0;

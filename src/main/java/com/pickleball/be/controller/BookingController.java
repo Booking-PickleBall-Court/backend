@@ -4,6 +4,7 @@ import com.pickleball.be.dto.CreateBookingDTO;
 import com.pickleball.be.model.Booking;
 import com.pickleball.be.service.BookingService;
 import com.pickleball.be.service.UserService;
+import com.pickleball.be.service.CourtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import com.pickleball.be.dto.booking.BookingHistoryResponse;
 import com.pickleball.be.dto.booking.BookingDetailsResponse;
+import com.pickleball.be.dto.booking.BookingRequest;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -26,6 +28,7 @@ public class BookingController {
 
     private final BookingService bookingService;
     private final UserService userService;
+    private final CourtService courtService;
 
     @PostMapping
     @PreAuthorize("hasRole('CLIENT')")
@@ -145,16 +148,8 @@ public class BookingController {
         return ResponseEntity.ok().build();
     }
 
-//    @GetMapping("/availability")
-//    public ResponseEntity<Boolean> checkTimeSlotAvailability(
-//            @RequestParam Long courtId,
-//            @RequestParam LocalDateTime startTime,
-//            @RequestParam LocalDateTime endTime) {
-//        return ResponseEntity.ok(bookingService.isTimeSlotAvailable(courtId, startTime, endTime));
-//    }
-
     @GetMapping("/slots")
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OWNER')")
     public ResponseEntity<?> getBookedSlots(
             @RequestParam Long courtId,
             @RequestParam String date // dạng YYYY-MM-DD
@@ -183,5 +178,41 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
     public ResponseEntity<List<BookingHistoryResponse>> getOwnerCourtBookings(@PathVariable Long ownerId) {
         return ResponseEntity.ok(bookingService.getOwnerCourtBookings(ownerId));
+    }
+
+    @PostMapping("/owner/create-multi")
+    @PreAuthorize("hasRole('OWNER')")
+    public ResponseEntity<List<BookingHistoryResponse>> ownerCreateMultiBooking(@RequestBody BookingRequest req) {
+        Long ownerId = userService.getCurrentUser().getId();
+        var court = courtService.getCourtById(req.getCourtId());
+        if (!court.getOwner().getId().equals(ownerId)) {
+            return ResponseEntity.status(403).build();
+        }
+        List<Booking> bookings = bookingService.createMultiBookingForOwner(req, ownerId);
+        List<BookingHistoryResponse> responses = bookings.stream().map(b -> BookingHistoryResponse.builder()
+                .id(b.getId())
+                .courtId(b.getCourt().getId())
+                .courtName(b.getCourt().getName())
+                .subCourts(
+                    b.getSubCourts() != null
+                    ? b.getSubCourts().stream()
+                        .map(sc -> BookingHistoryResponse.SubCourtInfo.builder()
+                            .id(sc.getId())
+                            .name(sc.getName())
+                            .build())
+                        .toList()
+                    : List.of()
+                )
+                .startTime(b.getStartTime())
+                .endTime(b.getEndTime())
+                .status(b.getStatus())
+                .totalPrice(b.getTotalPrice())
+                .paymentStatus(b.getPaymentStatus())
+                .paymentMethod(b.getPaymentMethod())
+                .notes(b.getNotes())
+                .createdAt(b.getCreatedAt())
+                .build()
+        ).toList();
+        return ResponseEntity.ok(responses);
     }
 } 
