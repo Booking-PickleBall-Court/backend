@@ -253,8 +253,9 @@ public class CourtServiceImpl implements CourtService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
             
         int totalBookings = bookings.size();
-        int totalHoursBooked = bookings.stream()
-            .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+        int totalMinutesBooked = bookings.stream()
+            .filter(b -> "PAID".equalsIgnoreCase(b.getPaymentStatus()))
+            .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toMinutes())
             .sum();
             
         return CourtRevenueResponse.builder()
@@ -262,7 +263,6 @@ public class CourtServiceImpl implements CourtService {
             .courtName(court.getName())
             .totalRevenue(totalRevenue)
             .totalBookings(totalBookings)
-            .totalHoursBooked(totalHoursBooked)
             .build();
     }
 
@@ -283,14 +283,20 @@ public class CourtServiceImpl implements CourtService {
 
         BigDecimal totalRevenue = BigDecimal.ZERO;
         int totalBookings = 0;
-        int totalHoursBooked = 0;
+        int totalMinutesBooked = 0;
 
         for (Court court : ownerCourts) {
             CourtRevenueResponse courtRevenue = getCourtRevenue(court.getId());
             totalRevenue = totalRevenue.add(courtRevenue.getTotalRevenue());
             totalBookings += courtRevenue.getTotalBookings();
-            totalHoursBooked += courtRevenue.getTotalHoursBooked();
+            // Lấy tất cả booking PAID của court này
+            List<Booking> bookings = bookingRepository.findByCourtId(court.getId());
+            totalMinutesBooked += bookings.stream()
+                .filter(b -> "PAID".equalsIgnoreCase(b.getPaymentStatus()))
+                .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toMinutes())
+                .sum();
         }
+        int totalHoursBooked = totalMinutesBooked / 60;
 
         User owner = ownerCourts.get(0).getOwner();
         return OwnerRevenueResponse.builder()
@@ -371,11 +377,10 @@ public class CourtServiceImpl implements CourtService {
                 BigDecimal totalRevenue = monthBookings.stream()
                     .map(b -> BigDecimal.valueOf(b.getTotalPrice()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-                
-                int totalHoursBooked = monthBookings.stream()
-                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+                int totalMinutesBooked = monthBookings.stream()
+                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toMinutes())
                     .sum();
-
+                int totalHoursBooked = totalMinutesBooked / 60;
                 return MonthlyRevenueResponse.builder()
                     .month(month)
                     .totalRevenue(totalRevenue)
@@ -383,7 +388,7 @@ public class CourtServiceImpl implements CourtService {
                     .totalBookings(monthBookings.size())
                     .build();
             })
-            .toList();
+            .collect(Collectors.toList());
     }
 
     @Override
@@ -411,11 +416,11 @@ public class CourtServiceImpl implements CourtService {
             .map(entry -> {
                 User customer = entry.getKey();
                 List<Booking> customerBookings = entry.getValue();
-
                 int totalBookings = customerBookings.size();
-                int totalHoursBooked = customerBookings.stream()
-                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toHours())
+                int totalMinutesBooked = customerBookings.stream()
+                    .mapToInt(b -> (int) java.time.Duration.between(b.getStartTime(), b.getEndTime()).toMinutes())
                     .sum();
+                int totalHoursBooked = totalMinutesBooked / 60;
                 BigDecimal totalSpent = customerBookings.stream()
                     .map(b -> BigDecimal.valueOf(b.getTotalPrice()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -423,7 +428,6 @@ public class CourtServiceImpl implements CourtService {
                     .map(Booking::getStartTime)
                     .max(LocalDateTime::compareTo)
                     .orElse(null);
-
                 return TopCustomerResponse.builder()
                     .customerId(customer.getId())
                     .customerName(customer.getFullName())
@@ -435,10 +439,9 @@ public class CourtServiceImpl implements CourtService {
                     .lastBookingDate(lastBookingDate)
                     .build();
             })
-            .sorted((c1, c2) -> c2.getTotalSpent().compareTo(c1.getTotalSpent())) // Sort by total spent in descending order
-            .limit(5) // Get top 5 customers
-            .toList();
-
+            .sorted((c1, c2) -> ((TopCustomerResponse)c2).getTotalSpent().compareTo(((TopCustomerResponse)c1).getTotalSpent()))
+            .limit(5)
+            .collect(Collectors.toList());
         return customerStats;
     }
 

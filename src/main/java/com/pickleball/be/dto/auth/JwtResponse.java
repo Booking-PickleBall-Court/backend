@@ -12,12 +12,16 @@ public class JwtResponse {
     private String email;
     private String fullName;
     private String role;
+    private String avatarUrl;
+    private String phoneNumber;
 
-    public JwtResponse(String token, Long id, String email, String fullName, String role) {
+    public JwtResponse(String token, Long id, String email, String fullName, String role, String avatarUrl, String phoneNumber) {
         this.token = token;
         this.id = id;
         this.email = email;
         this.fullName = fullName;
         this.role = role;
+        this.avatarUrl = avatarUrl;
+        this.phoneNumber = phoneNumber;
     }
 } 

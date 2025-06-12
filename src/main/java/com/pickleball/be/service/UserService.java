@@ -2,6 +2,7 @@ package com.pickleball.be.service;
 
 import com.pickleball.be.dto.auth.LoginRequest;
 import com.pickleball.be.dto.auth.RegisterRequest;
+import com.pickleball.be.dto.user.UserProfileUpdateRequest;
 import com.pickleball.be.model.User;
 import com.pickleball.be.model.UserRole;
 import com.pickleball.be.model.UserStatus;
@@ -22,4 +23,5 @@ public interface UserService {
     List<User> getUsersByRole(UserRole role);
     User updateUserStatus(Long userId, UserStatus status);
     User updateUserRole(Long userId, UserRole role);
+    User updateProfile(UserProfileUpdateRequest request);
 } 
