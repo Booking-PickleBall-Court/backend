@@ -87,8 +87,8 @@ public class PaymentController {
         // Create Stripe checkout session
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl("http://localhost:3000/confirmBooking?bookingIds=" + bookingIds + "&status=success")
-                .setCancelUrl("http://localhost:3000")
+                .setSuccessUrl("https://picklenetweb.vercel.app/confirmBooking?bookingIds=" + bookingIds + "&status=success")
+                .setCancelUrl("https://picklenetweb.vercel.app")
                 .addLineItem(SessionCreateParams.LineItem.builder()
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                 .setCurrency("vnd")
