@@ -14,6 +14,7 @@ import com.pickleball.be.repository.UserRepository;
 import com.pickleball.be.service.BookingService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,7 +94,10 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<Booking> getBookingsByUser(Long userId) {
-        return bookingRepository.findByUserId(userId);
+        return bookingRepository.findByUserId(
+                userId,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
     }
 
     @Override

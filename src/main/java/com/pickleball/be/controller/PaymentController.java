@@ -3,6 +3,7 @@ package com.pickleball.be.controller;
 import com.pickleball.be.model.Booking;
 import com.pickleball.be.service.BookingService;
 import com.pickleball.be.service.PaymentService;
+import com.pickleball.be.service.EmailService;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -39,6 +40,7 @@ public class PaymentController {
     private final BookingService bookingService;
     private final PaymentService paymentService;
     private final UserService userService;
+    private final EmailService emailService;
 
     @Value("${stripe.api.key}")
     private String stripeSecretKey;
@@ -154,6 +156,14 @@ public class PaymentController {
                     booking.setPaymentStatus("PAID");
                     bookingService.updateBookingStatus(bookingId, "CONFIRMED");
                     bookingService.updatePaymentStatus(bookingId, "PAID");
+
+                    // Send email notification to court owner after successful payment
+                    try {
+                        emailService.sendBookingNotificationToOwner(booking);
+                    } catch (Exception e) {
+                        // Log the error but don't throw it to prevent affecting the payment process
+                        System.err.println("Failed to send email notification: " + e.getMessage());
+                    }
                 }
                 // Get updated booking information and convert to DTO
                 List<BookingConfirmationResponse> updatedBookingResponses = Arrays.stream(bookingIdArray)
@@ -191,13 +201,10 @@ public class PaymentController {
                                 .build();
                     })
                     .toList();
-                
                 return ResponseEntity.ok(updatedBookingResponses);
             }
         }
-
-        // Những event khác (ví dụ payment_intent.succeeded) đều trả về 200 nhưng không xử lý
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok().build();
     }
 
     private String getRequestBody(HttpServletRequest request) throws Exception {
